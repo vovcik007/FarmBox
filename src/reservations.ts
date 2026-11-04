@@ -26,3 +26,29 @@ export async function reserve(pool: pg.Pool, productId: string, quantity: number
   );
   return result.rowCount === 1;
 }
+
+export async function reserveIdempotently(pool: pg.Pool, key: string, productId: string, quantity: number): Promise<'reserved' | 'insufficient' | 'conflict'> {
+  if (!validProductId(productId) || !validQuantity(quantity) || !/^[A-Za-z0-9_-]{1,128}$/.test(key)) throw new Error('invalid request');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const inserted = await client.query('INSERT INTO reservation_requests (idempotency_key, product_id, quantity) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING idempotency_key', [key, productId, quantity]);
+    if (inserted.rowCount === 0) {
+      const previous = await client.query('SELECT product_id, quantity, reserved FROM reservation_requests WHERE idempotency_key = $1', [key]);
+      const record = previous.rows[0];
+      await client.query('COMMIT');
+      if (record.product_id !== productId || record.quantity !== quantity) return 'conflict';
+      return record.reserved ? 'reserved' : 'insufficient';
+    }
+    const result = await client.query('UPDATE stock SET quantity = quantity - $2 WHERE product_id = $1 AND quantity >= $2 RETURNING quantity', [productId, quantity]);
+    const reserved = result.rowCount === 1;
+    await client.query('UPDATE reservation_requests SET reserved = $2 WHERE idempotency_key = $1', [key, reserved]);
+    await client.query('COMMIT');
+    return reserved ? 'reserved' : 'insufficient';
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
