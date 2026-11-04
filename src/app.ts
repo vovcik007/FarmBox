@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import pg from 'pg';
-import { reserve, validProductId, validQuantity } from './reservations.js';
+import { reserveIdempotently, validProductId, validQuantity } from './reservations.js';
 
 export function createApp(pool?: pg.Pool) {
   return createServer(async (request, response) => {
@@ -22,14 +22,15 @@ export function createApp(pool?: pg.Pool) {
         response.writeHead(400).end();
         return;
       }
-      if (!data || typeof data !== 'object' || !('productId' in data) || !validProductId(data.productId) || !('quantity' in data) || !validQuantity(data.quantity)) {
+      const key = request.headers['idempotency-key'];
+      if (!data || typeof data !== 'object' || !('productId' in data) || !validProductId(data.productId) || !('quantity' in data) || !validQuantity(data.quantity) || typeof key !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(key)) {
         response.writeHead(400).end();
         return;
       }
       try {
-        const reserved = await reserve(pool, data.productId, data.quantity);
-        response.writeHead(reserved ? 201 : 409, { 'content-type': 'application/json' });
-        response.end(JSON.stringify({ reserved }));
+        const result = await reserveIdempotently(pool, key, data.productId, data.quantity);
+        response.writeHead(result === 'reserved' ? 201 : 409, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({ result }));
       } catch {
         response.writeHead(500).end();
       }

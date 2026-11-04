@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import pg from 'pg';
-import { initialize, reserve } from '../../src/reservations.js';
+import { initialize, reserve, reserveIdempotently } from '../../src/reservations.js';
 
 test('connects to isolated PostgreSQL', async () => {
   assert.ok(process.env.DATABASE_URL, 'DATABASE_URL is required');
@@ -10,6 +10,48 @@ test('connects to isolated PostgreSQL', async () => {
     const result = await pool.query('SELECT 1 AS value');
     assert.equal(result.rows[0].value, 1);
   } finally { await pool.end(); }
+});
+
+test('idempotency replays results and rejects conflicting requests, including concurrent retries', async () => {
+  assert.ok(process.env.DATABASE_URL, 'DATABASE_URL is required');
+  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  const productId = `test-${crypto.randomUUID()}`;
+  const key = `key-${crypto.randomUUID()}`;
+  const rejectedKey = `key-${crypto.randomUUID()}`;
+  try {
+    await initialize(pool);
+    await pool.query('INSERT INTO stock (product_id, quantity) VALUES ($1, 3)', [productId]);
+    assert.deepEqual(await Promise.all([reserveIdempotently(pool, key, productId, 2), reserveIdempotently(pool, key, productId, 2)]), ['reserved', 'reserved']);
+    assert.equal(await reserveIdempotently(pool, key, productId, 2), 'reserved');
+    assert.equal(await reserveIdempotently(pool, key, productId, 1), 'conflict');
+    assert.equal((await pool.query('SELECT quantity FROM stock WHERE product_id = $1', [productId])).rows[0].quantity, 1);
+    assert.equal(await reserveIdempotently(pool, rejectedKey, productId, 2), 'insufficient');
+    await pool.query('UPDATE stock SET quantity = 5 WHERE product_id = $1', [productId]);
+    assert.equal(await reserveIdempotently(pool, rejectedKey, productId, 2), 'insufficient');
+    assert.equal((await pool.query('SELECT quantity FROM stock WHERE product_id = $1', [productId])).rows[0].quantity, 5);
+  } finally {
+    await pool.query('DELETE FROM reservation_requests WHERE idempotency_key = ANY($1::text[])', [[key, rejectedKey]]);
+    await pool.query('DELETE FROM stock WHERE product_id = $1', [productId]);
+    await pool.end();
+  }
+});
+
+test('different idempotency keys cannot over-reserve concurrently', async () => {
+  assert.ok(process.env.DATABASE_URL, 'DATABASE_URL is required');
+  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  const productId = `test-${crypto.randomUUID()}`;
+  const keys = [`key-${crypto.randomUUID()}`, `key-${crypto.randomUUID()}`];
+  try {
+    await initialize(pool);
+    await pool.query('INSERT INTO stock (product_id, quantity) VALUES ($1, 3)', [productId]);
+    const results = await Promise.all(keys.map(key => reserveIdempotently(pool, key, productId, 2)));
+    assert.deepEqual(results.sort(), ['insufficient', 'reserved']);
+    assert.equal((await pool.query('SELECT quantity FROM stock WHERE product_id = $1', [productId])).rows[0].quantity, 1);
+  } finally {
+    await pool.query('DELETE FROM reservation_requests WHERE idempotency_key = ANY($1::text[])', [keys]);
+    await pool.query('DELETE FROM stock WHERE product_id = $1', [productId]);
+    await pool.end();
+  }
 });
 
 test('atomic reservations respect available stock under concurrency', async () => {
