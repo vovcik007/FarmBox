@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../../src/app.js';
+import { validQuantity } from '../../src/reservations.js';
+
+test('validates reservation quantity', () => {
+  for (const value of [0, -1, 1.5, NaN, 2147483648, '1', null]) assert.equal(validQuantity(value), false);
+  assert.equal(validQuantity(1), true);
+});
 
 test('health endpoint reports service status', async () => {
   const server = createApp().listen(0, '127.0.0.1');
