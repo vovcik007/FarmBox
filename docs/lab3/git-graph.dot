@@ -1,0 +1,22 @@
+digraph FarmBox {
+  rankdir=LR;
+  graph [label="FarmBox: фактична історія релізних комітів", labelloc=t, fontsize=22, fontname="Arial", bgcolor="white", pad=0.3];
+  node [shape=box, style="rounded,filled", fillcolor="#f2f7f3", color="#367557", fontname="Arial", fontsize=11];
+  edge [color="#466e59", arrowsize=0.7];
+  root [label="353d730\nbootstrap main"];
+  stock [label="02c0a04\nfeature/stock-reservations\n(історична)"];
+  v100 [label="50f5b76  PR #1 merge\nmain · v1.0.0", fillcolor="#cdebd8"];
+  prepare [label="4fcba15\nfeature/idempotent-reservations\nпідготовка (історична)"];
+  hotfix [label="a600bfd\nhotfix/reservation-validation\n(історична)"];
+  v101 [label="e3c12d9  PR #2 merge\nmain · v1.0.1", fillcolor="#cdebd8"];
+  sync [label="9d26d67\nmerge main у feature\nперенесення hotfix", fillcolor="#fff0ce"];
+  complete [label="ae34897\nзавершення ідемпотентності"];
+  tests [label="c6d4f1a\nконкурентні тести"];
+  v110 [label="0b6bb9c  PR #3 merge\nmain · v1.1.0", fillcolor="#cdebd8"];
+  root -> stock -> v100;
+  root -> v100;
+  v100 -> prepare -> sync -> complete -> tests -> v110;
+  v100 -> hotfix -> v101 -> sync;
+  v100 -> v101;
+  v101 -> v110;
+}
