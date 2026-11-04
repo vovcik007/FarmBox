@@ -66,6 +66,28 @@ git tag -a v1.1.0 0b6bb9cb30bb8f9d9061ca1f3cc7af0fbd2d24fc -m "FarmBox backend d
 git push origin v1.1.0
 GitHub REST API: створено Release v1.1.0
 git log --graph --oneline --decorate --all --date-order
+git add docs                                  # у документаційній робочій копії
+git commit -m "docs: record lab evidence and release graph"
+git push -u origin docs/lab3-guidance         # з основної робочої копії
+GitHub API: створено PR #4
+git switch -c feature/runnable-build-artifact
+git add .github/workflows/ci.yml
+git commit -m "ci: package and smoke test runnable artifact"
+git push -u origin feature/runnable-build-artifact
+GitHub API: створено PR #5
+GitHub API: CI успішний; PR #4 злито merge-комітом 39f61d9
+git fetch origin
+git merge --no-edit origin/main               # оновлення feature-гілки документацією
+git push origin feature/runnable-build-artifact
+git push origin --delete docs/lab3-guidance
+GitHub API: CI успішний; PR #5 злито merge-комітом d95c816
+git fetch origin
+git switch main
+git merge --ff-only origin/main
+git push origin --delete feature/runnable-build-artifact
+git switch -c docs/final-evidence
 ```
 
 Усі п’ять CI jobs виконувалися у GitHub Actions, включно з PostgreSQL service container. Локальний integration та Docker Compose не запускалися: Docker/PostgreSQL на комп’ютері відсутні. Точний стан graph-файлу — момент його генерації; пізніші документаційні коміти до нього фізично не входять.
+
+[PR #4](https://github.com/vovcik007/FarmBox/pull/4) додає документацію. [PR #5](https://github.com/vovcik007/FarmBox/pull/5) пакує production-залежності разом зі збіркою і перевіряє запуск розпакованого артефакту в [CI](https://github.com/vovcik007/FarmBox/actions/runs/41798297025). Ці зміни виконані після трьох демонстраційних релізів і не змінюють їхніх тегів.
