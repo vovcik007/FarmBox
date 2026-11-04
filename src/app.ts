@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import pg from 'pg';
-import { reserve, validQuantity } from './reservations.js';
+import { reserve, validProductId, validQuantity } from './reservations.js';
 
 export function createApp(pool?: pg.Pool) {
   return createServer(async (request, response) => {
@@ -22,7 +22,7 @@ export function createApp(pool?: pg.Pool) {
         response.writeHead(400).end();
         return;
       }
-      if (!data || typeof data !== 'object' || !('productId' in data) || typeof data.productId !== 'string' || !data.productId || !('quantity' in data) || !validQuantity(data.quantity)) {
+      if (!data || typeof data !== 'object' || !('productId' in data) || !validProductId(data.productId) || !('quantity' in data) || !validQuantity(data.quantity)) {
         response.writeHead(400).end();
         return;
       }

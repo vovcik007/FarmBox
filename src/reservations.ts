@@ -1,5 +1,9 @@
 import pg from 'pg';
 
+export function validProductId(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value);
+}
+
 export function validQuantity(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0 && value <= 2147483647;
 }
