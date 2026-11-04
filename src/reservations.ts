@@ -6,6 +6,12 @@ export function validQuantity(value: unknown): value is number {
 
 export async function initialize(pool: pg.Pool): Promise<void> {
   await pool.query('CREATE TABLE IF NOT EXISTS stock (product_id TEXT PRIMARY KEY, quantity INTEGER NOT NULL CHECK (quantity >= 0))');
+  await pool.query(`CREATE TABLE IF NOT EXISTS reservation_requests (
+    idempotency_key TEXT PRIMARY KEY,
+    product_id TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    reserved BOOLEAN
+  )`);
 }
 
 export async function reserve(pool: pg.Pool, productId: string, quantity: number): Promise<boolean> {
