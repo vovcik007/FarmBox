@@ -51,11 +51,36 @@ jobs:
       - run: npm run test:integration
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_USER: farmbox, POSTGRES_PASSWORD: farmbox, POSTGRES_DB: farmbox_test }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U farmbox" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://farmbox:farmbox@localhost:5432/farmbox_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci
       - run: npm run build
+      - run: npm prune --omit=dev
+      - run: tar -czf farmbox-build.tgz package.json package-lock.json dist node_modules
+      - name: Smoke test packaged artifact
+        run: |
+          mkdir /tmp/farmbox-artifact
+          tar -xzf farmbox-build.tgz -C /tmp/farmbox-artifact
+          cd /tmp/farmbox-artifact
+          node dist/src/server.js &
+          server=$!
+          trap 'kill "$server" || true' EXIT
+          for attempt in {1..30}; do
+            if curl -fsS http://localhost:3000/health; then exit 0; fi
+            sleep 1
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
-        with: { name: farmbox-build, path: dist/ }
+        with: { name: farmbox-build, path: farmbox-build.tgz }
