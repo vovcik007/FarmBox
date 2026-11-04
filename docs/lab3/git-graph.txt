@@ -1,0 +1,23 @@
+﻿*   0a8825c (HEAD -> docs/lab3-guidance) Merge branch 'main' into docs/lab3-guidance
+|\  
+| *   0b6bb9c (tag: v1.1.0, origin/main, origin/HEAD, main) Merge pull request #3 from vovcik007/feature/idempotent-reservations
+| |\  
+| | * c6d4f1a (feature/idempotent-reservations) test: cover concurrent and rejected reservation retries
+| | * ae34897 feat: complete idempotent reservations
+| | *   9d26d67 Merge remote-tracking branch 'origin/main' into feature/idempotent-reservations
+| | |\  
+| | |/  
+| |/|   
+| * |   e3c12d9 (tag: v1.0.1) Merge pull request #2 from vovcik007/hotfix/reservation-validation
+| |\ \  
+| | * | a600bfd (hotfix/reservation-validation) fix: strengthen reservation input validation
+| |/ /  
+| | * 4fcba15 feat: prepare idempotent reservation handling
+| |/  
+| *   50f5b76 (tag: v1.0.0) Merge pull request #1 from vovcik007/feature/stock-reservations
+| |\  
+| | * 02c0a04 (feature/stock-reservations) feat: add atomic stock reservations
+| |/  
+* / 4df92b9 docs: describe branching and deployment plan
+|/  
+* 353d730 chore: initialize FarmBox backend demo
