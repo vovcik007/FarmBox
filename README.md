@@ -5,3 +5,5 @@
 Потрібні Node.js з `.nvmrc`, npm та PostgreSQL. Встановлення: `npm ci`; перевірки: `npm run lint`, `npm run typecheck`, `npm run test:unit`, `npm run test:integration`, `npm run build`. Для інтеграційного тесту задайте `DATABASE_URL` до ізольованої тестової бази. Запуск `npm start`; стан: `GET /health`.
 
 Локальний запуск із Docker: `docker compose up --build`. Значення у `.env.example` демонстраційні.
+
+`POST /reservations` приймає JSON з `productId` та додатним цілим `quantity` і заголовок `Idempotency-Key` (1–128 латинських літер, цифр, `_` або `-`). Перед тестуванням потрібно додати товар до таблиці `stock`; відсутній або недостатній залишок повертає HTTP 409. Повтор того самого запиту повертає збережений результат без повторного списання; повторне використання ключа з іншими даними повертає HTTP 409 з `result: conflict`.
