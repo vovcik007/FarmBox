@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: farmbox
+      POSTGRES_PASSWORD: farmbox
+      POSTGRES_DB: farmbox
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U farmbox"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports: ["5432:5432"]
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://farmbox:farmbox@db:5432/farmbox
+    ports: ["3000:3000"]
+    depends_on:
+      db: { condition: service_healthy }
